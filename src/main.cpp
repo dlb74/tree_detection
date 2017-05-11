@@ -52,15 +52,9 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <time.h>
 
-
-
-
-
 bool camera = false;
 bool initialized = false;
 bool segmentForest = false;
-
-
 
 //scan point cloud from bottom to top. 0 = ground. 1 = tree trunk. 2 = tree crown area.
 
@@ -69,8 +63,6 @@ int atTrunkAssume(1);
 int atTrunk (2);
 int atCrownAssume(3);
 int atCrown (4);
-
-
 
 using namespace std;
 
@@ -101,10 +93,13 @@ int step = 3;
 
 string axis = "z";
 
-//pcl::visualization::CloudViewer viewer ("3D Cloud");
-//boost::shared_ptr<pcl::visualization::PCLVisualizer> my_viewer;
-
-
+/**
+ * This function averages the between points in the cloud and their nearest neigbour - it does so using a kdTreeFLANN
+ *
+ * @param cloud the cloud which is being analyzed
+ * @param gap the amount of points in the cloud that are checked to give an estimate of the resolution
+ * @return the average distance between points in the cloud
+ */
 double computeCloudResolution (const PointCloud::ConstPtr &cloud, int gap)
 {
     double res = 0.0;
@@ -136,19 +131,6 @@ double computeCloudResolution (const PointCloud::ConstPtr &cloud, int gap)
     }
     return res;
 }
-
-
-
-
-//float zoomin (float input)
-//{
-//	return (rows/4) + input * zoomSize;
-//}
-
-//float zoomout (float input)
-//{
-//	return (input - (rows/4)) / zoomSize;
-//}
 
 bool clockCompare(PointT a, PointT b)
 {
@@ -242,7 +224,6 @@ CircleData findCircleCenterLeast(PointCloud::Ptr linePCL)
 
     code = CircleFitByLevenbergMarquardtFull (data1,circleIni,LambdaIni,circle);
 
-
     CircleData CD;
 
     CD.center.x = circle.a;
@@ -251,22 +232,13 @@ CircleData findCircleCenterLeast(PointCloud::Ptr linePCL)
     CD.radius = circle.r;
     CD.height = linePCL->points[0].z;
 
-
-
     return CD;
-
 
 }
 
 bool isClosePoint2D(double pt1x, double pt1y, double pt2x, double pt2y, double threshold = 0.4)
 {
-
-    if(sqrtf(fabs(pt1x-pt2x)*fabs(pt1x-pt2x)+fabs(pt1y-pt2y)*fabs(pt1y-pt2y)) < threshold)
-    {
-        //cout<<"heheda: "<<sqrtf(fabs(pt1x-pt2x)*fabs(pt1x-pt2x)+fabs(pt1y-pt2y)*fabs(pt1y-pt2y))<<endl;
-        return true;
-    }
-    return false;
+    return (sqrtf(fabs(pt1x-pt2x)*fabs(pt1x-pt2x)+fabs(pt1y-pt2y)*fabs(pt1y-pt2y)) < threshold);
 }
 
 
@@ -274,9 +246,6 @@ bool isClosePoint2D(double pt1x, double pt1y, double pt2x, double pt2y, double t
 CircleData findCircleCenter(pcl::PointCloud<PointT>::Ptr line, int repeat = 10000)
 {
 
-	//cv::Point2f pt1 = line[int(random(0, line.size()))];
-	//cv::Point2f pt2 = line[int(random(0, line.size()))];
-	//cv::Point2f pt3 = line[int(random(0, line.size()))];
     vector<CircleData> circles;
     int repeat_weight = 0;
     CircleData CD;
@@ -354,13 +323,6 @@ CircleData findCircleCenter1(pcl::PointCloud<PointT>::Ptr line)
     vector< vector<double> > transA(points_size);
     vector< vector<double> > multATA(points_size);
     vector< vector<double> > multATY(points_size);
-    //double A[3][points_size];
-//    double Y[1][points_size];
-//    double transA[points_size][3];
-//    double multATA[points_size][1000000];
-//    cout<<"111111111111111111: " <<endl;
-//    // setup the matrices
-
 
     for (j=0; j < points_size; j++)
     {
@@ -410,11 +372,7 @@ CircleData findCircleCenter1(pcl::PointCloud<PointT>::Ptr line)
         }
     }
 
-    //cout<<"4444444444444: " << multATA[0][0] <<endl;
-
-
     CircleData CD;
-
 
     return CD;
 
@@ -462,14 +420,6 @@ bool kdtreeSearchNearest3D (PointT searchPoint,
 
 	if ( kdtree.nearestKSearch (searchPoint, k, pointIdxNKNSearch, pointNKNSquaredDistance) > 0 )
 	{
-/*
-		for (size_t i = 0; i < pointIdxNKNSearch.size (); ++i)
-			std::cout << "    "  <<   cloud->points[ pointIdxNKNSearch[i] ].x 
-					<< " " << cloud->points[ pointIdxNKNSearch[i] ].y 
-					<< " " << cloud->points[ pointIdxNKNSearch[i] ].z 
-					<< " (squared distance: " << pointNKNSquaredDistance[i] << ")" << std::endl;
-			cout<<"hahaha: "<< cloud <<endl;
-*/
 		if (pointNKNSquaredDistance[0] < resolution){
 			nearestPoint = cloud->points[ pointIdxNKNSearch[0] ];
 			return true;
@@ -488,17 +438,9 @@ CircleData findCircleCenterBounding(PointCloud::Ptr linePCL)
         points.push_back(Point_2(linePCL->points[i].x, linePCL->points[i].y));
     }
 
-//    points.push_back(Point_2(0,0));
-//    points.push_back(Point_2(1,1));
-//    points.push_back(Point_2(0,1));
-//    points.push_back(Point_2(1,0));
-
-//    Min_circle mc1( &points[0], &points[linePCL->points.size() - 1], false);
     Min_circle mc2( &points[0], &points[linePCL->points.size() - 1], true);
 
     Traits::Circle c = mc2.circle();
-    //CGAL::set_pretty_mode( std::cout);
-    //std::cout << mc2 <<endl;
 
     CircleData CD;
 
@@ -597,35 +539,8 @@ boost::shared_ptr<pcl::visualization::PCLVisualizer> simpleVis (PointCloud::Cons
     viewer->addPointCloud<pcl::PointXYZ> (cloud, single_color, "sample cloud");
     viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
 
-//    for (int i = 0; i < slicedCloud3d.size(); i++)
-//    {
-//        //std::cerr << "pointSize: "<< slicedCloud3d[i]->points.size()<< std::endl;
-//        stringstream ss;
-//        ss << i;
-//        viewer->addPointCloud<PointT> (slicedCloud3d[i], ss.str());
-//        viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
-//    }
-
     viewer->addCoordinateSystem (1.0);
     viewer->initCameraParameters ();
-
-	
-//    for (int n = 0; n < circles_box.size(); n++){
-//        for (int m = 0; m < circles_box[m].size(); m++){
-			
-//            stringstream ss;
-//            ss << n << m;
-			
-//            //cout<<"hehe: "<<circles_box[n][m].center<<" "<<circles_box[n][m].radius<<" "<<circles_box[n][m].height<<endl;
-//            viewer->addCylinder (circles_box[n][m].center.x, circles_box[n][m].center.y, circles_box[n][m].height-(slice_step/2),
-//                                circles_box[n][m].center.x, circles_box[n][m].center.y, circles_box[n][m].height+(slice_step/2),
-//                                circles_box[n][m].radius, 20, ss.str());
-//        }
-//    }
-    //viewer->addSphere (cloud->points[0], 0.2, 0.5, 0.5, 0.0, "sphere");
-	
-    //viewer->addCylinder<pcl::PointXYZ> (double p0x,double p0y,double p0z,
-    //double p1x,double p1y,double p1z, double rad, int numsides, const std::string &id, int viewport);
 
   return (viewer);
 }
@@ -661,6 +576,15 @@ bool cloud_passthrough (pcl::PointCloud<PointT>::Ptr cloud, pcl::PointCloud<Poin
 
 }
 
+/**
+ *
+ * @param sliced_cloud
+ * @param sliceHeights
+ * @param cloud
+ * @param plane_coefficient
+ * @param resolution
+ * @param sliceConst
+ */
 void pointCloudSlice(vector< vector < pcl::PointCloud<PointT>::Ptr > >& sliced_cloud,
                      vector<double>& sliceHeights,
                      pcl::PointCloud<PointT>::Ptr cloud,
@@ -671,7 +595,6 @@ void pointCloudSlice(vector< vector < pcl::PointCloud<PointT>::Ptr > >& sliced_c
     double thickness = sliceConst * resolution;
     double currentHeight = -plane_coefficient->values[3] + 3;
 
-
     bool sliceScanned = false;
 
     while(1)
@@ -680,13 +603,11 @@ void pointCloudSlice(vector< vector < pcl::PointCloud<PointT>::Ptr > >& sliced_c
         pcl::PointCloud<PointT>::Ptr cloudUpperSlice(new pcl::PointCloud<PointT>);
         pcl::PointCloud<PointT>::Ptr cloudLowerSlice(new pcl::PointCloud<PointT>);
 
-        //currentHeight += step*thickness;
-        //cout<<"eeeeeeeee: "<<currentHeight<<endl;
         if(cloud_passthrough (cloud, cloudUpperSlice, currentHeight, thickness) &&
             cloud_passthrough (cloud, cloudLowerSlice, currentHeight-(thickness), thickness))
         {
             sliceScanned = true;
-            vector< pcl::PointCloud<PointT>::Ptr> oneSlice;
+            vector<pcl::PointCloud<PointT>::Ptr> oneSlice;
             oneSlice.push_back(cloudLowerSlice);
             oneSlice.push_back(cloudUpperSlice);
             sliced_cloud.push_back(oneSlice);
@@ -739,23 +660,6 @@ void form2DSlices(vector< vector < PointCloud::Ptr > > sliced_cloud,
 
 
 		pcl::PointCloud<PointT>::Ptr cloud (new pcl::PointCloud<PointT>);
-//        for (int j = 0; j < sliced_cloud[i][0]->points.size(); j++)
-//		{
-//            pcl::PointXYZ intersectionPoint;
-//            pcl::PointXYZ nearestPoint;
-//            //find intersection of two points with slice plane
-//            if (kdtreeSearchNearest3D (sliced_cloud[i][0]->points[j], sliced_cloud[i][1], nearestPoint, resolution)){
-//                findIntersection(sliced_cloud[i][0]->points[j], nearestPoint, sliceHeights[i], intersectionPoint);
-//                cloud->points.push_back(intersectionPoint);
-
-////                cout<<"heheda111111: "<<sliced_cloud[i][0]->points[j]<<endl;
-////                cout<<"heheda222222: "<<nearestPoint<<endl;
-////                cout<<"intersectionPoint: "<<intersectionPoint<<endl;
-//            }
-//		}
-        //cv::Mat image(rows, cols, CV_8U, 255);
-
-        //bubbleSort(cloud, cloud->points.size());
 
         for (int j = 0; j < sliced_cloud[i][0]->points.size(); j++)
         {
@@ -918,11 +822,15 @@ void outlierFilte(pcl::PointCloud<PointT>::Ptr cloud_input, pcl::PointCloud<Poin
     sor_outlier.setStddevMulThresh (1.0);
     sor_outlier.filter (*cloud_output);
 
-//    std::cerr << "PointCloud after outlier filtering: " << cloud_output->width * cloud_output->height
-//       << " data points"<<endl ;
-
 }
-
+/**
+ * This method is used to find a plane using the RANSAC model - it will remove all points that are outliers
+ * from the plane. The plane_coefficients variable will contain the points that describe the found plane.
+ *
+ *
+ * @param cloud_input the point cloud to be segmented.
+ * @param plane_coefficient a variable that will hold the coefficients that describe the plane.
+ */
 void planeDetect(pcl::PointCloud<PointT>::Ptr cloud_input,
                  pcl::ModelCoefficients::Ptr& plane_coefficient)
 {
@@ -937,47 +845,26 @@ void planeDetect(pcl::PointCloud<PointT>::Ptr cloud_input,
     seg.setMaxIterations (1000);
     seg.setDistanceThreshold (0.1);
 
-
     // Segment the largest planar component from the remaining cloud
     seg.setInputCloud (cloud_input);
     seg.segment (*inliers, *plane_coefficient);
-
-
-
 }
 
-void translateHorizental(pcl::PointCloud<PointT>::Ptr cloud_input,
+/**
+ * Rotate the point cloud around the X axis by arctan(Y/Z) where Y and Z come from the plane-coefficients object
+ *
+ * @param cloud_input the point cloud that is being rotated
+ * @param cloud_output the results of the point cloud that is being rotated
+ * @param plane_coefficient the coefficients that describe the plane which the angle of rotation is calculated form
+ */
+void RotateAboutXAxis(pcl::PointCloud<PointT>::Ptr cloud_input,
                          pcl::PointCloud<PointT>::Ptr& cloud_output,
                          pcl::ModelCoefficients::Ptr& plane_coefficient)
 {
-
-
-    //std::cerr << "Plane coefficients: " << *plane_coefficient << std::endl;
-
-    /**  Using a Affine3f
-      This method is easier and less error prone
-    */
-
-    float thetax = atan((plane_coefficient->values[1])/plane_coefficient->values[2]);
+    float thetax = atan(plane_coefficient->values[1]/plane_coefficient->values[2]);
     Eigen::Affine3f transform_x = Eigen::Affine3f::Identity();
-    // The same rotation matrix as before; theta radians arround X axis
-    transform_x.rotate (Eigen::AngleAxisf (thetax, Eigen::Vector3f::UnitX()));
-    // You can either apply transform_1 or transform_2; they are the same
+    transform_x.rotate(Eigen::AngleAxisf (thetax, Eigen::Vector3f::UnitX()));
     pcl::transformPointCloud (*cloud_input, *cloud_output, transform_x);
-
-//    float thetay = atan(-(plane_coefficient->values[0])/plane_coefficient->values[2]);
-//    Eigen::Affine3f transform_y = Eigen::Affine3f::Identity();
-//    // The same rotation matrix as before; theta radians arround Y axis
-//    transform_y.rotate (Eigen::AngleAxisf (thetay, Eigen::Vector3f::UnitY()));
-//    // You can either apply transform_1 or transform_2; they are the same
-//    pcl::transformPointCloud (*cloud_output, *cloud_output, transform_y);
-
-//    float thetaz = atan(-(plane_coefficient->values[0])/plane_coefficient->values[1]);
-//    Eigen::Affine3f transform_z = Eigen::Affine3f::Identity();
-//    // The same rotation matrix as before; theta radians arround Z axis
-//    transform_z.rotate (Eigen::AngleAxisf (thetaz, Eigen::Vector3f::UnitZ()));
-//    // You can either apply transform_1 or transform_2; they are the same
-//    pcl::transformPointCloud (*cloud_output, *cloud_output, transform_z);
 
 }
 
@@ -1012,12 +899,6 @@ void clustering2DPoints(pcl::PointCloud<PointT>::Ptr cloud_input, vector<pcl::Po
         cloud_cluster->width = cloud_cluster->points.size ();
         cloud_cluster->height = 1;
         cloud_cluster->is_dense = true;
-
-        //std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
-
-        //std::stringstream ss;
-        //ss << "cloud_cluster_" << j << ".pcd";
-        //writer.write<PointT> (ss.str (), *cloud_cluster, false);
 
         if (!cloud_cluster->points.empty())
             clusters.push_back(cloud_cluster);
@@ -1070,33 +951,24 @@ bool optimizeCylinder(vector<CircleData> cylinder_input, pcl::ModelCoefficients:
 
     int gap = 0;
 
-    for (int i = 1; i < cylinder_input.size(); i++)
-    {
+    for (int i = 1; i < cylinder_input.size(); i++) {
 
-        if (fabs(radius - cylinder_input[i].radius) < 1.3*errors &&
-                fabs(cylinder_input[i].radius - cylinder_input[i+1].radius) < 1.3*errors)
-        {
-            x = (x + cylinder_input[i].center.x)/2;
-            y = (y + cylinder_input[i].center.y)/2;
+        if (fabs(radius - cylinder_input[i].radius) < 1.3 * errors &&
+            fabs(cylinder_input[i].radius - cylinder_input[i + 1].radius) < 1.3 * errors) {
+            x = (x + cylinder_input[i].center.x) / 2;
+            y = (y + cylinder_input[i].center.y) / 2;
 
-            radius = (radius + cylinder_input[i].radius)/2;
-            //errors = (errors + fabs(radius - cylinder_input[i].radius))/2;
+            radius = (radius + cylinder_input[i].radius) / 2;
         }
 
-        if (fabs(cylinder_input[i].height - cylinder_input[i-1].height) > 0.45)
-        {
-            gap+=3;
-
-        }else if (fabs(cylinder_input[i].height - cylinder_input[i-1].height) > 0.3)
-        {
-            gap+=2;
-
-        }else if (fabs(cylinder_input[i].height - cylinder_input[i-1].height) > 0.15)
-        {
-            gap+=1;
+        if (fabs(cylinder_input[i].height - cylinder_input[i - 1].height) > 0.45) {
+            gap += 3;
+        } else if (fabs(cylinder_input[i].height - cylinder_input[i - 1].height) > 0.3) {
+            gap += 2;
+        } else if (fabs(cylinder_input[i].height - cylinder_input[i - 1].height) > 0.15) {
+            gap += 1;
         }
     }
-
 
     if (gap < 3)
     {
@@ -1109,11 +981,7 @@ bool optimizeCylinder(vector<CircleData> cylinder_input, pcl::ModelCoefficients:
         cylinder_output->values.push_back( radius );
         return true;
     }
-
     return false;
-
-//    cout<<"height dadada "<<": "<< cylinder_input[0].height - (slice_step * step)/2 <<endl;
-//    cout<<"height xiao "<<": "<< cylinder_input[cylinder_input.size()-1].height + (slice_step * step)/2 <<endl;
 
 }
 
@@ -1141,18 +1009,12 @@ bool isTooClosedCircles(CircleData circle_1, CircleData circle_2)
  */
 void findCylinder(vector<CircleData> circles, vector< pcl::ModelCoefficients::Ptr>& cylinders)
 {
-
-    //cout<< "circles: "<<circles.size()<<endl;
-
     vector< vector<CircleData> > centers_cylinder;
 
     pcl::PointCloud<PointT>::Ptr temp_centers (new pcl::PointCloud<PointT>());
 
     for (int i = 0; i < circles.size(); i++)
     {
-
-        //temp_centers->points.push_back(center2D);
-
         bool haveClosePoint = false;
 
         if (i > 0)
@@ -1170,19 +1032,13 @@ void findCylinder(vector<CircleData> circles, vector< pcl::ModelCoefficients::Pt
                 }
             }
         }
-
-        //cout<<"iiiiiii: "<< i<<" "<<haveClosePoint<<endl;
-
         if (!haveClosePoint)
         {
             vector<CircleData> cylinder_hypo;
             cylinder_hypo.push_back(circles[i]);
             centers_cylinder.push_back(cylinder_hypo);
         }
-
     }
-
-
 
     for (int i = 0; i < centers_cylinder.size(); i++)
     {
@@ -1209,15 +1065,11 @@ void findCylinder(vector<CircleData> circles, vector< pcl::ModelCoefficients::Pt
 
                 if (optimizeCylinder(centers_cylinder[i], cylinder))
                 {
-                    //            cylinder->values[0] = centers_cylinder[i][0].x;
-                    //cout<<"hehe: "<<i<<endl;
                     cylinders.push_back(cylinder);
                 }
             }
         }
     }
-
-//    cout<< "cylinders: "<<cylinders.size()<<endl;
 }
 
 int reginalStatusDef(pcl::PointCloud<PointT>::Ptr slicedCloud, int currentLvl, int totalvl)
@@ -1234,16 +1086,9 @@ int reginalStatusDef(pcl::PointCloud<PointT>::Ptr slicedCloud, int currentLvl, i
     }
 }
 
-void groundRemove()
-{
-
-}
 
 void convexHull(pcl::PointCloud<PointT>::Ptr cluster, pcl::PointCloud<PointT>::Ptr& cluster_hull)
 {
-    //2D Convex Hulls and Extreme Points
-//    cout<<"slice_clusters: "<<cluster->points.size()<<endl;
-
     Points points, result;
     for(int i = 0; i < cluster->points.size(); i++)
     {
@@ -1251,7 +1096,6 @@ void convexHull(pcl::PointCloud<PointT>::Ptr cluster, pcl::PointCloud<PointT>::P
     }
 
     CGAL::convex_hull_2( points.begin(), points.end(), std::back_inserter(result) );
-//    cout << result.size() << " points on the convex hull" << std::endl;
 
     for(int i = 0; i < result.size(); i++)
     {
@@ -1262,7 +1106,6 @@ void convexHull(pcl::PointCloud<PointT>::Ptr cluster, pcl::PointCloud<PointT>::P
         cloudPoint.z = cluster->points[0].z;
 
         cluster_hull->points.push_back(cloudPoint);
-//        cout<<result[i][0]<<endl;
     }
 }
 
@@ -1295,8 +1138,7 @@ int trendDefine(int& preSizeAvg, int curSize, int nextSize){
 }
 
 
-void
-cloud_cb (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
+void cloud_cb (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
 {
     // Container for original & filtered data
     pcl::PCLPointCloud2* cloud = new pcl::PCLPointCloud2;
@@ -1338,10 +1180,8 @@ cloud_cb (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
 
 }
 
-void
-depth_cb (const sensor_msgs::ImageConstPtr& depth_msg)
+void depth_cb (const sensor_msgs::ImageConstPtr& depth_msg)
 {
-
     cv_bridge::CvImagePtr img_ptr_rgb;
     cv_bridge::CvImagePtr img_ptr_depth;
 
@@ -1357,20 +1197,6 @@ depth_cb (const sensor_msgs::ImageConstPtr& depth_msg)
     }
 
     cv::Mat& mat_depth = img_ptr_depth->image;
-
-//    cv::Mat image;
-//    image = imread(*mat_depth, cv::CV_LOAD_IMAGE_COLOR);   // Read the file
-
-//    if(! image.data )                              // Check for invalid input
-//    {
-//        cout <<  "Could not open or find the image" << std::endl ;
-
-//    }
-
-//    cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );// Create a window for display.
-//    cv::imshow( "Display window", image );
-
-//    cv::waitKey(0);
 }
 
 
@@ -1390,12 +1216,9 @@ int main (int argc, char** argv)
         // Create a ROS publisher for the output point cloud
         pub = nh.advertise<sensor_msgs::PointCloud2> ("outputheheda", 1);
 
-        //my_viewer = simpleVis(cloud_empty);
-
         // Spin
         ros::spin ();
     }else{
-
 
         vector< vector< CircleData > > circles_box;
         pcl::PCDReader reader;
@@ -1403,67 +1226,40 @@ int main (int argc, char** argv)
         pcl::PointCloud<PointT>::Ptr cloud_voxel_filtered (new pcl::PointCloud<PointT>);
         pcl::PointCloud<PointT>::Ptr cloud_outlier_filtered (new pcl::PointCloud<PointT>);
         pcl::PointCloud<PointT>::Ptr tmpPoints (new pcl::PointCloud<PointT>());
-        vector<double> sliceHeights;
 
-        /**
-         * Load Clouds
-         */
+         //Load Clouds
         string scene_filename_ = argv[1];
 
         if (pcl::io::loadPCDFile (scene_filename_, *scene) < 0)
         {
           std::cout << "Error loading scene cloud." << std::endl;
-
           return (-1);
         }
 
         vector< pcl::PointCloud<PointT>::Ptr > cloud_outputs;
         pcl::PointCloud<PointT>::Ptr cloud_view = scene;
 
-        /**
-        * use downsampling filter
-        */
-
-        //voxelFilte(scene, cloud_voxel_filtered);
-        //downsample(scene, cloud_voxel_filtered);
-
-        /**
-        * outlier filter
-        */
-        //outlierFilte(cloud_voxel_filtered, cloud_outlier_filtered);
-
-        /**
-        * translate cloud horizentalize with detected floor plane
-        */
         pcl::ModelCoefficients::Ptr plane_coefficient (new pcl::ModelCoefficients);
-        pcl::PointCloud<PointT>::Ptr cloud_translated (new pcl::PointCloud<PointT>);
+        pcl::PointCloud<PointT>::Ptr cloud_rotated (new pcl::PointCloud<PointT>);
         planeDetect(scene, plane_coefficient);
 
-        translateHorizental(scene, cloud_translated, plane_coefficient);
+        RotateAboutXAxis(scene, cloud_rotated, plane_coefficient);
 
-        //writer.write ("cloud2.pcd", *cloud_translated, false);
-
-        /**
-        * translate cloud horizentalize with detected floor plane
-        */
-        double resolution = computeCloudResolution(cloud_translated, 100);
+        double resolution = computeCloudResolution(cloud_rotated, 100);
         cout<<"resolution: "<< resolution<<endl;
-//        cylinder_detect(cloud_view);
 
-        //point cloud slice
-        vector<vector < pcl::PointCloud<PointT>::Ptr > > slicedCloud3d;
-        vector < pcl::PointCloud<PointT>::Ptr > slicedCloud2d;
+        vector<vector<pcl::PointCloud<PointT>::Ptr>> slicedCloud3d;
+        vector<pcl::PointCloud<PointT>::Ptr> slicedCloud2d;
+        vector<double> sliceHeights;
 
-        pointCloudSlice(slicedCloud3d, sliceHeights, cloud_translated, plane_coefficient, resolution, step);
+        pointCloudSlice(slicedCloud3d, sliceHeights, cloud_rotated, plane_coefficient, resolution, step);
 
         //from 3D to 2D
         form2DSlices(slicedCloud3d, slicedCloud2d, sliceHeights, resolution);
 
         boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;
 
-        viewer = simpleVis(cloud_translated, slicedCloud2d);
-        //viewer->addPlane(*plane_coefficient, "plane");
-        //segmented in 2D
+        viewer = simpleVis(cloud_rotated, slicedCloud2d);
         vector<CircleData> circles;
 
         int previousCloudAvgSize = slicedCloud2d[0]->points.size();
@@ -1471,174 +1267,33 @@ int main (int argc, char** argv)
         for (int i = 0; i < slicedCloud2d.size(); i++)
         {
 
-            
-
-//            cout<<"slice_clusters: "<<slicedCloud2d[i]->points.size()<<endl;
-//            if(slicedCloud2d[i]->points.size() > 5000)
-//            {
-//            }
-                //continue;
-
-//            if (reginalStatusDef(slicedCloud2d[i], i, slicedCloud2d.size()) >= 0)
-//            {
-
-            //reginalStatusDef(slicedCloud2d[i], i, slicedCloud2d.size());
-
-            //cout<<"slicedCloud2d: "<<currentStatus<<" -- "<<slicedCloud2d[i]->points.size()<<endl;
-            
-
-//            if(i > 0 && i < slicedCloud2d[i]->points.size() && segmentForest)
-//            {
-            
-//                if (currentStatus == atGround)
-//                {
-//                    if(trendDefine(previousCloudAvgSize, slicedCloud2d[i]->points.size(), slicedCloud2d[i+1]->points.size()) == -1)
-//                    {
-//                        currentStatus = atTrunkAssume;
-//                    }
-//                } else if (currentStatus == atTrunkAssume)
-//                {
-//                    if (trendDefine(previousCloudAvgSize, slicedCloud2d[i]->points.size(), slicedCloud2d[i+1]->points.size()) == 0)
-//                    {
-//                        currentStatus = atTrunk;
-//                    }
-//                } else if (currentStatus == atTrunk)
-//                {
-//                    if (trendDefine(previousCloudAvgSize, slicedCloud2d[i]->points.size(), slicedCloud2d[i+1]->points.size()) == 1)
-//                    {
-//                        currentStatus = atCrown;
-//                    }
-//                } else if (currentStatus == atCrownAssume)
-//                {
-
-//                } else
-//                {
-//                }
-//            }
-            
-//            stringstream ss;
-//            ss << i ;
-
             vector<pcl::PointCloud<PointT>::Ptr> slice_clusters;
 
             clustering2DPoints(slicedCloud2d[i], slice_clusters);
-//            cout<<"slicedCloud2d size: "<<slicedCloud2d[i]->points.size()<<endl;
-//            pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> single_color(slicedCloud2d[i],
-//                                                                                         rand() % 255, rand() % 255, rand() % 255);
-//            viewer->addPointCloud<PointT> (slicedCloud2d[i], single_color, ss.str());
+
             for (int j = 0; j < slice_clusters.size(); j++)
             {
-
-                //cout<<"slice_clusters: "<<slice_clusters[j]->points.size()<<endl;
-
                 //2D Convex Hulls and Extreme Points
                 pcl::PointCloud<PointT>::Ptr cluster_hull (new (pcl::PointCloud<PointT>));
                 convexHull(slice_clusters[j], cluster_hull);
 
                 stringstream ss;
                 ss << i << j;
-//                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> single_color(cluster_hull,
-//                                                                                             rand() % 255, rand() % 255, rand() % 255);
-
-//                viewer->addPointCloud<PointT> (cluster_hull, single_color, ss.str());
-
-//                if (currentStatus == atGround || currentStatus == atTrunkAssume)
-//                {
-//                    pcl::visualization::PointCloudColorHandlerCustom<PointT> single_color(slice_clusters[j],
-//                                                                                                 255, 0, 0);
-//                    viewer->addPointCloud<PointT> (slice_clusters[j], single_color, ss.str());
-//                }else if (currentStatus == atTrunk )
-//                {
-//                    pcl::visualization::PointCloudColorHandlerCustom<PointT> single_color(cluster_hull,
-//                                                                                                 0, 255, 0);
-//                    viewer->addPointCloud<PointT> (cluster_hull, single_color, ss.str());
-//                }else
-//                {
-//                    pcl::visualization::PointCloudColorHandlerCustom<PointT> single_color(cluster_hull,
-//                                                                                                 0, 0, 255);
-//                    viewer->addPointCloud<PointT> (cluster_hull, single_color, ss.str());
-//                }
-
-//                viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
-
-                /**
-                 * @brief circleData find circle center method one
-                 *
-                 */
-
-                //CircleData circleData = findCircleCenter(slice_clusters[j]);
-
-                //findCircleCenterLeast
-
-                /**
-                 * @brief circleData find circle center method two
-                 *
-                 */
 
                 CircleData circleData;
                 if (1)
                 {
-
-                    
                     circleData = findCircleCenterBounding(cluster_hull);
-
-                    //if (isCircleGood(circleData))
-                    //{
-                        circles.push_back(circleData);
-                    //}
+                    circles.push_back(circleData);
                 }
-
-
-                /**
-                 * @brief circleData find circle center method three
-                 *
-                 */
-
-                //CircleData circleData = findCircleCenterBounding(cluster_hull);
-
                 ss << "circle" << i <<j;
-                
-//                cout<<"circleData center: " << circleData.center <<endl;
-//                cout<<"circleData height: " << circleData.height <<endl;
-//                cout<<"circleData radius: " << circleData.radius <<endl;
-
-                if (circleData.radius < max_radius)
-                {
-
-
-//                    viewer->addCube(circleData.center.x - (circleData.radius),
-//                                    circleData.center.x + (circleData.radius),
-//                                    circleData.center.y - (circleData.radius),
-//                                    circleData.center.y + (circleData.radius),
-//                                    circleData.height - 0.05,
-//                                    circleData.height + 0.05,
-//                                    100.0, 100.0, 100.0, ss.str());
-
-//                        viewer->addCylinder(circleData.center.x, circleData.center.y, circleData.height-(slice_step/8),
-//                        circleData.center.x, circleData.center.y, circleData.height+(slice_step/8), circleData.radius, 20, ss.str());
-//                        PointT tmpPoint;
-//                        tmpPoint.x = circleData.center.x;
-//                        tmpPoint.y = circleData.center.y;
-//                        tmpPoint.z = circleData.height;
-//                        tmpPoints->points.push_back(tmpPoint);
-
-                }
-//                }
             }
         }
-
-        //cout<<"222222222222"<<endl;
-//        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> single_color(tmpPoints, 0, 255, 0);
-//        viewer->addPointCloud<PointT> (tmpPoints, single_color, "hehe");
-//        viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "hehe");
-
 
         vector< pcl::ModelCoefficients::Ptr> cylinders;
 
         findCylinder(circles, cylinders);
         cout<< "cylinders_size: "<<cylinders.size()<<endl;
-
-
 
         if (cylinders.size() > 0)
         {
@@ -1650,26 +1305,6 @@ int main (int argc, char** argv)
                        "\nTree radius: "<< cylinders[i]->values[6] <<endl;
                 stringstream ss;
                 ss << i;
-//                cout<<"hehe: "<<cylinders[i]->values[0] - (cylinders[i]->values[6] / 2)<<
-//                    cylinders[i]->values[0] + (cylinders[i]->values[6] / 2)<<
-//                    cylinders[i]->values[1] - (cylinders[i]->values[6] / 2)<<
-//                    cylinders[i]->values[1] + (cylinders[i]->values[6] / 2)<<
-//                    cylinders[i]->values[2]<<
-//                    cylinders[i]->values[5]<<endl;
-//                viewer->addCylinder(0,0,0,0,0,1,3, 20, ss.str());
-//                pcl::ModelCoefficients::Ptr cube_coefficients (new pcl::ModelCoefficients);
-//                cubeTmp.resize(4);
-//                cube_coefficients->values[0] = ;
-//                viewer->addCylinder(cylinders[i]->values[0],
-//                                    cylinders[i]->values[1],
-//                                    cylinders[i]->values[2],
-//                                    cylinders[i]->values[3],
-//                                    cylinders[i]->values[4],
-//                                    cylinders[i]->values[5],
-//                                    cylinders[i]->values[6], 20, ss.str());
-
-
-                //cout<<"dada xiaoxiao: "<<cylinders[i]->values[2]<<"  "<< cylinders[i]->values[5]<<endl;
 
                 viewer->addCube(cylinders[i]->values[0] - (cylinders[i]->values[6]),
                                 cylinders[i]->values[0] + (cylinders[i]->values[6]),
@@ -1678,11 +1313,7 @@ int main (int argc, char** argv)
                                 cylinders[i]->values[5],
                                 cylinders[i]->values[2],
                                 100.0, 100.0, 100.0, ss.str());
-
-//                    viewer->addCube(0.1, 2, 0.1, 2, 0.1, 2,
-//                                    1.0, 1.0, 1.0, ss.str());
             }
-
         }
 
         while (!viewer->wasStopped ())
@@ -1690,9 +1321,6 @@ int main (int argc, char** argv)
             viewer->spinOnce (100);
             boost::this_thread::sleep (boost::posix_time::microseconds (100000));
         }
-
-        //cv::waitKey(0);
-
     }
 
 }
